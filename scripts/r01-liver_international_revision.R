@@ -27,6 +27,18 @@ get_oddsratios <- function(metareg.object) {
 cirr_data <- read_rds(here("data", "02-cirrhosis.rds"))
 fib_data <- read_rds(here("data", "02-fibrosis_apri_fib4.rds"))
 
+# Modifications for nicer output
+cirr_data <- cirr_data %>% 
+  mutate(author = case_when(author == "Lemoine blood" ~ "Lemoine blood donors", 
+                            author == "Lemoine comm" ~ "Lemoine community", 
+                            TRUE ~ author)) %>% 
+  mutate(cirr_test = case_when(cirr_test == "apri" ~ "APRI", 
+                               cirr_test == "fibroscan" ~ "Transient elastography",
+                               cirr_test == "fibrotest" ~ "Fibrotest", 
+                               TRUE ~ as.character(cirr_test)), 
+         cirr_test = factor(cirr_test, levels = c("Transient elastography", 
+                                                  "APRI", 
+                                                  "Fibrotest")))
 
 # Main model without Aberra
 m_cirrhosis <- metaprop(event = cirrhosis, n_fibrosis_assessed, 
@@ -64,17 +76,18 @@ cirr_bystudypop <- function() {
            digits.addcols.left = 0, xlim = c(0, 30),
            digits.tau2 = 2, print.by = FALSE, col.by  = "black",
            overall = FALSE,
-           overall.hetstat = FALSE)
+           overall.hetstat = FALSE, 
+           sortvar = author)
 }
 
 
 # Write subgroup model
-png("graph/r01-cirrhosis_studypop_sens.png",
+png("graph/r01-cirrhosis_studypop_sens_noaberra.png",
     res = 300, width = 24, height = 16, unit = "cm")
 cirr_bystudypop()
 dev.off()
 
-pdf("graph/r01-cirrhosis_studypop_sens.pdf",
+pdf("graph/r01-cirrhosis_studypop_sens_noaberra.pdf",
     width = 24/cm_to_inch, height = 16/cm_to_inch)
 cirr_bystudypop()
 dev.off()
@@ -99,8 +112,6 @@ m_cirrhosis <- metaprop(event = cirrhosis, n_fibrosis_assessed,
                         method = "Inverse", 
                         subset = !(study_nr %in% c(21, 11)))
 
-
-
 m_cirrhosis %>% 
   forest(xlab = "Proportion with cirrhosis (%)", 
          pscale = 100, digits = 1, 
@@ -111,7 +122,8 @@ m_cirrhosis %>%
          digits.addcols.left = 0, xlim = c(0, 30),
          digits.tau2 = 2, print.by = FALSE, col.by  = "black",
          overall = TRUE,
-         overall.hetstat = FALSE)
+         overall.hetstat = FALSE, 
+         sortvar = author)
 
 
 update(m_cirrhosis, byvar = studypop2) %>% 
@@ -124,9 +136,10 @@ update(m_cirrhosis, byvar = studypop2) %>%
          digits.addcols.left = 0, xlim = c(0, 30),
          digits.tau2 = 2, print.by = FALSE, col.by  = "black",
          overall = TRUE,
-         overall.hetstat = FALSE)
+         overall.hetstat = FALSE, 
+         sortvar = author)
 
-# Subgroup model Kilonzo and Vinikoor 2018
+# Subgroup model without Kilonzo and Vinikoor 2018
 cirr_bystudypop <- function() {
   update(m_cirrhosis, byvar = studypop2) %>% 
     forest(xlab = "Proportion with cirrhosis (%)", 
@@ -138,7 +151,8 @@ cirr_bystudypop <- function() {
            digits.addcols.left = 0, xlim = c(0, 30),
            digits.tau2 = 2, print.by = FALSE, col.by  = "black",
            overall = FALSE,
-           overall.hetstat = FALSE)
+           overall.hetstat = FALSE, 
+           sortvar = author)
 }
 
 
@@ -163,3 +177,39 @@ metareg(m_cirrhosis, studypop2 + group + cirr_test) %>%
 
 
 
+
+# Setting analysis restricted to mono-studies
+m_cirrhosis <- metaprop(event = cirrhosis, n_fibrosis_assessed, 
+                        data = cirr_data, comb.fixed = FALSE, 
+                        studlab = glue("{author} ({year})"), 
+                        method = "Inverse", 
+                        subset = group == "mono")
+
+
+
+cirr_bystudypop_mono <- function() {
+  update(m_cirrhosis, byvar = studypop2) %>% 
+    forest(xlab = "Proportion with cirrhosis (%)", 
+           pscale = 100, digits = 1, 
+           leftcols = c("studlab", "country", "cirrhosis", "n_fibrosis_assessed"),
+           leftlabs = c("Author (year)", "Country", "N with\ncirrhosis", "N study\npopulation"),
+           smlab = "", 
+           rightlabs = c("Proportion (%)", "[95% CI]", "Weight"),
+           digits.addcols.left = 0, xlim = c(0, 30),
+           digits.tau2 = 2, print.by = FALSE, col.by  = "black",
+           overall = FALSE,
+           overall.hetstat = FALSE, 
+           sortvar = author)
+}
+
+
+# Write subgroup model
+png("graph/r01-cirrhosis_studypop_sens_onlymono.png",
+    res = 300, width = 24, height = 14, unit = "cm")
+cirr_bystudypop_mono()
+dev.off()
+
+pdf("graph/r01-cirrhosis_studypop_sens_onlymono.pdf",
+    width = 24/cm_to_inch, height = 14/cm_to_inch)
+cirr_bystudypop_mono()
+dev.off()
