@@ -313,7 +313,7 @@ barchart <- bardata %>%
             family = "Roboto Condensed") +
   labs(x = "Number of patients",
        y = NULL, 
-       fill = "Type of Cohort Setting") + 
+       fill = "Cohort category") + 
   scale_fill_brewer(palette = 5) + 
   scale_x_continuous(position = "bottom") + 
   theme_minimal(base_family = "Roboto Condensed") + 
